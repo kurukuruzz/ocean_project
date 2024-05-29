@@ -1,0 +1,31 @@
+.sidebar-category {
+    width: 100%;
+}
+
+.sidebar-category .category-list {
+    padding: 0.5rem 0;
+}
+
+.sidebar-category .category-toggle {
+    position: relative;
+}
+
+.sidebar-category .category-toggle .toggle-line {
+    border: 1px solid lightgrey;
+    padding-top: 1rem;
+}
+
+.sidebar-category .category-toggle button {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    background-color: white;
+    border: 1px solid lightgrey;
+    border-radius: 15px;
+    padding: 0.5rem 2rem;
+    color: grey;
+
+    cursor: pointer;
+}
