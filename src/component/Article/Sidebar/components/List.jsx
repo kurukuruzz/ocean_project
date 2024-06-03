@@ -4,11 +4,12 @@ import './List.css';
 const List = ({
     listInfo,
     items,
+    address,
 }) => {
     return (
         <div className="sidebar-list">
             <div className="info">
-                {listInfo.city} 핫토픽 ({listInfo.count.toLocaleString()}+곳)
+                {address} 핫토픽 ({listInfo.count.toLocaleString()}+곳)
             </div>
             <div className="result-list">
                 {

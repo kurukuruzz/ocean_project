@@ -4,10 +4,12 @@ import List from "./components/List";
 
 import './Sidebar.css';
 
-const Sidebar = () => {
+const Sidebar = ({
+    address
+}) => {
     const [isShowCategory, setIsShowCategory] = useState(false);
     const [listInfo, setListInfo] = useState({
-        city: '부산광역시',
+        city: address,
         count: 10000,
     })
     const [items, setItems] = useState([
@@ -52,6 +54,8 @@ const Sidebar = () => {
             <List
                 listInfo={listInfo}
                 items={items}
+
+                address={address}
             />
         </div>
     )

@@ -2,13 +2,16 @@ import React, { useEffect, useState } from "react";
 import './Map.css';
 const { kakao } = window;
 
-const Map = () => {
+const Map = ({
+    setAddress,
+}) => {
     const [rowLevel, setRowLevel] = useState(13);
     const [level, setLevel] = useState(13);
     const [mapCenter, setMapCenter] = useState({
         lat: 36.03257609653945,
         lng: 127.95172999438276,
     });
+    const [mapInstance, setMapInstance] = useState(null);
 
     useEffect(() => {
         const script = document.createElement("script");
@@ -40,6 +43,30 @@ const Map = () => {
         }
     }, [level]);
 
+    useEffect(() => {
+        if (mapInstance) {
+            window.kakao.maps.event.addListener(mapInstance, 'click', async (e) => {
+                const { latLng } = e;
+                // console.log(latLng)
+
+                // if (!blurred) {
+                handleAreaClick(latLng);
+                // }
+                const result = await fetch(`https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${latLng.La}&y=${latLng.Ma}`, {
+                    method: 'get',
+                    headers: {
+                        'Authorization': `KakaoAK b7cf9eae2097956579182491f68a9d5e`,
+                        'KA': 'sdk/1.0.0 os/javascript lang/en-KR origin/http://localhost:3000'
+                    },
+                });
+
+                const data = await result.json();
+                const addressInfo = data.documents[0].address.address_name.split(' ');
+                setAddress(`${addressInfo[0]} ${addressInfo[1]}`)
+            });
+        }
+    }, [mapInstance]);
+
     const initMap = () => {
         if (window.kakao && window.kakao.maps) {
             const container = document.getElementById("map");
@@ -50,6 +77,7 @@ const Map = () => {
                     level: level,
                 };
                 const map = new window.kakao.maps.Map(container, options);
+                setMapInstance(map);
 
                 window.kakao.maps.event.addListener(map, "zoom_changed", function () {
                     const currentLevel = map.getLevel();
@@ -101,6 +129,31 @@ const Map = () => {
             })
         } else {
             console.error("Kakao Maps not available");
+        }
+    };
+
+    const handleAreaClick = (latLng) => {
+        // const { La: latitude, Ma: longitude } = latLng;
+        const latitude = latLng.getLat();
+        const longitude = latLng.getLng();
+
+        if (mapInstance) {
+            // 위도와 경도를 확인하여 유효한지 체크
+            if (!isNaN(latitude) && !isNaN(longitude)) {
+                const targetCoords = new window.kakao.maps.LatLng(latitude, longitude);
+
+                // panTo 메서드 호출 전 확인 메시지
+                console.log('Moving map to:', targetCoords);
+                console.log(mapInstance.panTo);
+
+                // 지도 이동 및 줌 레벨 설정
+                mapInstance.setCenter(targetCoords);
+                mapInstance.setLevel(11); // 줌 레벨 설정
+            } else {
+                console.error('유효하지 않은 좌표입니다:', latitude, longitude);
+            }
+        } else {
+            console.error('mapInstance가 유효하지 않습니다.');
         }
     };
 

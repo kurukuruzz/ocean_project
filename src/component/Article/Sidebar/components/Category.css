@@ -4,6 +4,7 @@
 
 .sidebar-category .category-list {
     padding: 0.5rem 0;
+    border-bottom: 1px dashed grey;
 }
 
 .sidebar-category .category-toggle {
@@ -20,12 +21,22 @@
     top: 100%;
     left: 50%;
     transform: translate(-50%, -50%);
-
+    
     background-color: white;
     border: 1px solid lightgrey;
     border-radius: 15px;
     padding: 0.5rem 2rem;
     color: grey;
-
+    
     cursor: pointer;
+}
+
+.sidebar-category .category-divide {
+    font-weight: bold;
+    border-bottom: 1px solid grey;
+    padding-bottom: 0.5rem;
+}
+
+.sidebar-category .category-select {
+    padding-top: 0.5rem;
 }
