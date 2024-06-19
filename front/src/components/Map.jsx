@@ -9,11 +9,12 @@ const Map = () => {
     lng: 127.95172999438276,
   });
   const [mapInstance, setMapInstance] = useState(null);
+  const [address, setAddress] = useState('');
 
   useEffect(() => {
     const script = document.createElement("script");
     script.id = "kakao-map-script";
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=발급 받은 API키`;
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=b7cf9eae2097956579182491f68a9d5e&autoload=false`;
     script.async = true;
 
     document.head.appendChild(script);
@@ -33,37 +34,26 @@ const Map = () => {
 
   useEffect(() => {
     setRowLevel(level);
-  
+
     if ((level <= 10 && rowLevel >= 11) || (level >= 11 && rowLevel <= 10)) {
       window.kakao.maps.load(initMap);
     }
-  
-    // level이 13보다 크거나 같으면 지도 이동 막기
-    if (level >= 13) {
-      if (mapInstance) {
-        mapInstance.setDraggable(false); // 지도 이동 막기
-      }
-    } else {
-      // level이 13보다 작은 경우에는 지도 이동을 허용합니다.
-      if (mapInstance) {
-        mapInstance.setDraggable(true); // 지도 이동 허용하기
+
+    if (mapInstance) {
+      if (level >= 13) {
+        mapInstance.setDraggable(false);
+      } else {
+        mapInstance.setDraggable(true);
+        mapInstance.setZoomable(true);
       }
     }
-  
   }, [level]);
-  
-  
-
 
   useEffect(() => {
     if (mapInstance) {
       window.kakao.maps.event.addListener(mapInstance, "click", async (e) => {
         const { latLng } = e;
-        // console.log(latLng)
-
-        // if (!blurred) {
         handleAreaClick(latLng);
-        // }
         const result = await fetch(
           `https://dapi.kakao.com/v2/local/geo/coord2address.json?x=${latLng.La}&y=${latLng.Ma}`,
           {
@@ -76,8 +66,12 @@ const Map = () => {
         );
 
         const data = await result.json();
-        const addressInfo = data.documents[0].address.address_name.split(" ");
-        setAddress(`${addressInfo[0]} ${addressInfo[1]}`);
+        if (data.documents.length > 0) {
+          const addressInfo = data.documents[0].address.address_name.split(" ");
+          setAddress(`${addressInfo[0]} ${addressInfo[1]}`);
+        } else {
+          console.error("주소 정보를 찾을 수 없습니다.");
+        }
       });
     }
   }, [mapInstance]);
@@ -97,6 +91,8 @@ const Map = () => {
         };
         const map = new window.kakao.maps.Map(container, options);
 
+        setMapInstance(map);
+
         window.kakao.maps.event.addListener(map, "zoom_changed", function () {
           const currentLevel = map.getLevel();
           setLevel(Number(currentLevel));
@@ -107,48 +103,7 @@ const Map = () => {
           setMapCenter({ lat: latlng.getLat(), lng: latlng.getLng() });
         });
 
-        import(
-          `../../public/${
-            level > 10 ? "TL_SCCO_CTPRVN.json" : "TL_SCCO_SIG.json"
-          }`
-        )
-          .then((jsonData) => {
-            jsonData.features.forEach((feature) => {
-              const geometry = feature.geometry;
-              const properties = feature.properties;
-
-              const polygons = geometry.coordinates.map((coords) => {
-                return coords.map(
-                  (coord) => new window.kakao.maps.LatLng(coord[1], coord[0])
-                );
-              });
-
-              const polygon = new window.kakao.maps.Polygon({
-                map: map,
-                path: polygons,
-                strokeWeight: 2,
-                strokeColor: "#004c80",
-                strokeOpacity: 0.8,
-                fillColor: "#fff",
-                fillOpacity: 0.7,
-              });
-
-              window.kakao.maps.event.addListener(polygon, "mouseover", () =>
-                polygon.setOptions({ fillColor: "#070774cd" })
-              );
-              window.kakao.maps.event.addListener(polygon, "mouseout", () =>
-                polygon.setOptions({ fillColor: "#fff" })
-              );
-
-              const regionCode = properties.CTPRVN_CD;
-              const regionName = properties.CTP_KOR_NM;
-            });
-          })
-          .catch((error) =>
-            console.error("Failed to load the geojson file", error)
-          );
-
-        console.log("Map initialized");
+        loadGeoJson(map, level);
       } else {
         console.error("Map container not found");
       }
@@ -156,23 +111,78 @@ const Map = () => {
       console.error("Kakao Maps not available");
     }
   };
+
+  const loadGeoJson = (map, level) => {
+    const geoJsonFile = level > 10 ? "TL_SCCO_CTPRVN.json" : "TL_SCCO_SIG.json";
+    import(`../../public/${geoJsonFile}`)
+      .then((jsonData) => {
+        jsonData.features.forEach((feature) => {
+          const geometry = feature.geometry;
+          const properties = feature.properties;
+
+          const polygons = geometry.coordinates.map((coords) => {
+            return coords.map(
+              (coord) => new window.kakao.maps.LatLng(coord[1], coord[0])
+            );
+          });
+
+          const polygon = new window.kakao.maps.Polygon({
+            map: map,
+            path: polygons,
+            strokeWeight: 2,
+            strokeColor: "#004c80",
+            strokeOpacity: 0.8,
+            fillColor: "#fff",
+            fillOpacity: 0.7,
+          });
+
+          window.kakao.maps.event.addListener(polygon, "mouseover", () =>
+            polygon.setOptions({ fillColor: "#070774cd" })
+          );
+          window.kakao.maps.event.addListener(polygon, "mouseout", () =>
+            polygon.setOptions({ fillColor: "#fff" })
+          );
+
+          const regionName = properties.CTP_KOR_NM || properties.SIG_KOR_NM;
+
+          // 중앙 좌표 계산 (모든 좌표의 평균)
+          let latSum = 0;
+          let lngSum = 0;
+          let count = 0;
+          geometry.coordinates.forEach((coords) => {
+            coords.forEach((coord) => {
+              latSum += coord[1];
+              lngSum += coord[0];
+              count++;
+            });
+          });
+          const center = new window.kakao.maps.LatLng(
+            latSum / count,
+            lngSum / count
+          );
+
+          const customOverlay = new window.kakao.maps.CustomOverlay({
+            position: center,
+            content: `<div style="padding:5px;background:white;border:1px solid black;">${regionName}</div>`,
+          });
+
+          customOverlay.setMap(map);
+        });
+      })
+      .catch((error) =>
+        console.error("Failed to load the geojson file", error)
+      );
+  };
+
   const handleAreaClick = (latLng) => {
-    // const { La: latitude, Ma: longitude } = latLng;
     const latitude = latLng.getLat();
     const longitude = latLng.getLng();
 
     if (mapInstance) {
-      // 위도와 경도를 확인하여 유효한지 체크
       if (!isNaN(latitude) && !isNaN(longitude)) {
         const targetCoords = new window.kakao.maps.LatLng(latitude, longitude);
-
-        // panTo 메서드 호출 전 확인 메시지
-        console.log("Moving map to:", targetCoords);
-        console.log(mapInstance.panTo);
-
-        // 지도 이동 및 줌 레벨 설정
         mapInstance.setCenter(targetCoords);
-        mapInstance.setLevel(11); // 줌 레벨 설정
+        mapInstance.setLevel(9); 
       } else {
         console.error("유효하지 않은 좌표입니다:", latitude, longitude);
       }
@@ -184,6 +194,7 @@ const Map = () => {
   return (
     <Container>
       <div id="map" className="map"></div>
+      <div>{address}</div> {/* 선택된 주소 표시 */}
     </Container>
   );
 };
@@ -192,13 +203,15 @@ export default Map;
 
 const Container = styled.div`
   display: flex;
+  flex-direction: column;
   width: 100%;
-  height: auto;
+  height: 100vh; // 화면 전체 높이로 설정
   background-color: #444444bf;
   overflow: hidden;
   z-index: 0;
   .map {
     width: 100%;
     height: 100%;
+    flex: 1;
   }
 `;

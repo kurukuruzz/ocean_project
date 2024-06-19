@@ -61,10 +61,6 @@ export default function Category({ isShowCategory, ToggleCategory }) {
             </div>
           </div>
         </>
-        <div className="category-toggle">
-          <div className="toggle-line"></div>
-          <button onClick={ToggleCategory}>{isShowCategory ? "△" : "▽"}</button>
-        </div>
       </div>
     </Container>
   );
